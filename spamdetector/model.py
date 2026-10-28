@@ -6,7 +6,8 @@ import re
 from typing import Any
 
 import pandas as pd
-from sklearn.feature_extraction.text import TfidfVectorizer
+from nltk.stem import SnowballStemmer
+from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
 from sklearn.metrics import (
     accuracy_score,
     confusion_matrix,
@@ -20,6 +21,8 @@ from .data import validate_frame
 
 _SPECIAL_CHARACTERS = re.compile(r"[^a-z0-9\s]")
 _WHITESPACE = re.compile(r"\s+")
+_TOKEN = re.compile(r"[a-z0-9]+")
+_STEMMER = SnowballStemmer("english")
 
 
 def clean_text(text: str) -> str:
@@ -28,14 +31,44 @@ def clean_text(text: str) -> str:
     return _WHITESPACE.sub(" ", text).strip()
 
 
-def build_pipeline() -> Pipeline:
+def tokenize_text(
+    text: str, remove_stopwords: bool = False, stemming: bool = False
+) -> list[str]:
+    """Clean and tokenize text, optionally removing stopwords and stemming."""
+    tokens = _TOKEN.findall(clean_text(text))
+    if remove_stopwords:
+        tokens = [token for token in tokens if token not in ENGLISH_STOP_WORDS]
+    if stemming:
+        tokens = [_STEMMER.stem(token) for token in tokens]
+    return tokens
+
+
+def preprocess_text(
+    text: str, remove_stopwords: bool = False, stemming: bool = False
+) -> dict[str, Any]:
+    """Return each text-preprocessing stage for display and inspection."""
+    cleaned = clean_text(text)
+    tokens = tokenize_text(cleaned, remove_stopwords, stemming)
+    return {
+        "cleaned": cleaned,
+        "tokens": tokens,
+        "processed": " ".join(tokens),
+    }
+
+
+def build_pipeline(
+    remove_stopwords: bool = False, stemming: bool = False
+) -> Pipeline:
+    tokenizer = lambda text: tokenize_text(text, remove_stopwords, stemming)
     return Pipeline(
         [
             (
                 "tfidf",
                 TfidfVectorizer(
                     preprocessor=clean_text,
-                    token_pattern=r"(?u)\b\w+\b",
+                    tokenizer=tokenizer,
+                    token_pattern=None,
+                    lowercase=False,
                 ),
             ),
             ("classifier", MultinomialNB()),
@@ -44,7 +77,11 @@ def build_pipeline() -> Pipeline:
 
 
 def train_model(
-    frame: pd.DataFrame, test_size: float = 0.2, seed: int = 42
+    frame: pd.DataFrame,
+    test_size: float = 0.2,
+    seed: int = 42,
+    remove_stopwords: bool = False,
+    stemming: bool = False,
 ) -> dict[str, Any]:
     """Train a vectorizer and classifier on a stratified reproducible split."""
     if not 0 < test_size < 1:
@@ -59,7 +96,7 @@ def train_model(
         random_state=seed,
         stratify=data["label"],
     )
-    model = build_pipeline()
+    model = build_pipeline(remove_stopwords=remove_stopwords, stemming=stemming)
     model.fit(train_text, train_labels)
     predictions = model.predict(test_text)
     return {
@@ -69,6 +106,8 @@ def train_model(
         "predictions": predictions,
         "seed": seed,
         "test_size": test_size,
+        "remove_stopwords": remove_stopwords,
+        "stemming": stemming,
     }
 
 
