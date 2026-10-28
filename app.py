@@ -4,7 +4,7 @@ import pandas as pd
 import requests
 import streamlit as st
 
-from spamdetector.data import load_dataset, validate_frame
+from spamdetector.data import EXAMPLE_MESSAGES, load_dataset, validate_frame
 from spamdetector.model import (
     error_analysis,
     evaluate_model,
@@ -127,7 +127,28 @@ st.write(
     "settings. The model updates as you type. Predictions are estimates, not guarantees; "
     "avoid entering sensitive content."
 )
-message = st.text_area("Message text", placeholder="Type or paste a message...", height=130)
+st.markdown("#### Try a labelled example")
+st.caption("Choose an example to automatically fill the message box and classify it.")
+sample_columns = st.columns(len(EXAMPLE_MESSAGES))
+for column, (label, sample_text) in zip(sample_columns, EXAMPLE_MESSAGES):
+    with column:
+        st.markdown(f"**{label} example**")
+        st.caption(sample_text)
+        st.button(
+            f"Classify {label.lower()} example",
+            key=f"sample_{label.lower()}",
+            use_container_width=True,
+            on_click=lambda text=sample_text: st.session_state.__setitem__(
+                "message_input", text
+            ),
+        )
+
+message = st.text_area(
+    "Message text",
+    placeholder="Type or paste a message...",
+    height=130,
+    key="message_input",
+)
 if message.strip():
     stages = preprocess_text(
         message, remove_stopwords=remove_stopwords, stemming=stemming

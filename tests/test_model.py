@@ -2,7 +2,7 @@ import unittest
 
 import pandas as pd
 
-from spamdetector.data import validate_frame
+from spamdetector.data import EXAMPLE_MESSAGES, validate_frame
 from spamdetector.model import (
     clean_text,
     error_analysis,
@@ -39,6 +39,11 @@ SAMPLE = pd.DataFrame(
 
 
 class ModelTests(unittest.TestCase):
+    def test_labelled_examples_cover_ham_and_spam(self):
+        examples = dict(EXAMPLE_MESSAGES)
+        self.assertIn("Hey, are you coming to class today?", examples["Ham"])
+        self.assertIn("Congratulations!", examples["Spam"])
+
     def test_text_cleaning(self):
         self.assertEqual(clean_text("  WIN!!!  Cash\tNOW. "), "win cash now")
 

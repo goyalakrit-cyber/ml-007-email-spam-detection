@@ -11,6 +11,10 @@ import requests
 
 DATASET_URL = "https://archive.ics.uci.edu/static/public/228/sms+spam+collection.zip"
 DATASET_FILENAME = "SMSSpamCollection"
+EXAMPLE_MESSAGES = (
+    ("Ham", "Hey, are you coming to class today?"),
+    ("Spam", "Congratulations! You have won a free prize."),
+)
 
 
 def load_dataset(data_dir: str | Path = "data") -> pd.DataFrame:
