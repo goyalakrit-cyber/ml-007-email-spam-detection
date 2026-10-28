@@ -5,7 +5,12 @@ import requests
 import streamlit as st
 
 from spamdetector.data import load_dataset, validate_frame
-from spamdetector.model import error_analysis, evaluate_model, train_model
+from spamdetector.model import (
+    error_analysis,
+    evaluate_model,
+    preprocess_text,
+    train_model,
+)
 
 st.set_page_config(
     page_title="Message Shield | Spam Detection",
@@ -35,6 +40,16 @@ with st.sidebar:
         "Test set size", min_value=0.1, max_value=0.4, value=0.2, step=0.05
     )
     seed = st.number_input("Random seed", min_value=0, max_value=100_000, value=42)
+    remove_stopwords = st.checkbox(
+        "Remove English stopwords",
+        value=False,
+        help="Optional: remove common words such as “the” and “is” before TF-IDF.",
+    )
+    stemming = st.checkbox(
+        "Apply English stemming",
+        value=False,
+        help="Optional: reduce words to their stems (for example, “running” to “run”).",
+    )
     upload = st.file_uploader(
         "Optional labelled CSV",
         type=["csv"],
@@ -50,7 +65,13 @@ try:
         source = load_dataset()
         source_name = "UCI SMS Spam Collection"
     with st.spinner("Training the TF-IDF + Naive Bayes baseline..."):
-        result = train_model(source, test_size=float(test_size), seed=int(seed))
+        result = train_model(
+            source,
+            test_size=float(test_size),
+            seed=int(seed),
+            remove_stopwords=remove_stopwords,
+            stemming=stemming,
+        )
     metrics = evaluate_model(result)
 except (requests.RequestException, ValueError, pd.errors.ParserError) as exc:
     st.error(f"Could not prepare the model: {exc}")
@@ -62,7 +83,9 @@ counts[0].metric("Messages", f"{len(source):,}")
 counts[1].metric("Ham", f"{(source['label'] == 'ham').sum():,}")
 counts[2].metric("Spam", f"{(source['label'] == 'spam').sum():,}")
 st.caption(
-    f"Data: {source_name} · TF-IDF + Multinomial Naive Bayes · seed {seed}"
+    f"Data: {source_name} · TF-IDF + Multinomial Naive Bayes · seed {seed} · "
+    f"stopword removal {'on' if remove_stopwords else 'off'} · "
+    f"stemming {'on' if stemming else 'off'}"
 )
 
 st.subheader("Held-out evaluation")
@@ -99,9 +122,26 @@ with errors_col:
 
 st.divider()
 st.subheader("Try a message")
-st.write("Predictions are estimates, not guarantees. Avoid entering sensitive content.")
+st.write(
+    "Text is cleaned and tokenized automatically using the selected preprocessing "
+    "settings. The model updates as you type. Predictions are estimates, not guarantees; "
+    "avoid entering sensitive content."
+)
 message = st.text_area("Message text", placeholder="Type or paste a message...", height=130)
-if st.button("Check message", type="primary", disabled=not message.strip()):
+if message.strip():
+    stages = preprocess_text(
+        message, remove_stopwords=remove_stopwords, stemming=stemming
+    )
+    with st.expander("See automatic text preprocessing"):
+        st.text_area(
+            "Cleaned text",
+            value=stages["cleaned"],
+            height=75,
+            disabled=True,
+        )
+        st.write("**Tokens:**", ", ".join(stages["tokens"]) or "(no tokens)")
+        st.caption("Token sequence sent to TF-IDF after the selected optional steps.")
+
     model = result["model"]
     prediction = model.predict([message])[0]
     probabilities = model.predict_proba([message])[0]

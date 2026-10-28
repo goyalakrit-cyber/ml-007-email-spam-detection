@@ -12,8 +12,10 @@ your own messages.
 ## Features
 
 - Downloads the UCI SMS Spam Collection; no account or credentials required.
-- Normalizes text (lowercase, remove special characters, collapse whitespace)
-  before vectorizing with TF-IDF.
+- Automatically lowercases, removes special characters, normalizes whitespace,
+  and tokenizes text before TF-IDF; the website previews cleaned text and tokens.
+- Offers optional English stopword removal and stemming settings, applied the
+  same way during training and interactive prediction.
 - Uses a stratified, reproducible train/test split and Multinomial Naive Bayes.
 - Reports accuracy, spam precision/recall/F1 and a confusion matrix.
 - Displays held-out false positives and false negatives.
