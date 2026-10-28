@@ -20,6 +20,8 @@ your own messages.
 - Reports accuracy, spam precision/recall/F1 and a confusion matrix.
 - Displays held-out false positives and false negatives.
 - Offers interactive predictions with estimated class confidence.
+- Includes labelled ham/spam example messages that can be selected to
+  automatically populate the input and run a prediction.
 - Accepts compatible labelled CSV uploads (`label`, `text` columns).
 
 ## Quick start
